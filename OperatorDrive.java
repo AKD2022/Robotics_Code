@@ -1,66 +1,71 @@
 // package org.firstinspires.ftc.teamcode; comment out later
 
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.Servo;
+@TeleOp(name="OperatorDrive", group="Linear Opmode")
+public class ManuelDrive extends LinearOpMode {
 
-@TeleOp(name = "OperatorDrive")
-public class OperatorDrive extends OpMode{
-
-    private DcMotor left;
-    private DcMotor right;
-    private DcMotor arm;
-    private Servo Front;
-    private Servo back;
-
-
-
-    private double servoPos;
-    private boolean oldServoButton;
+    private Blinker control_Hub;
+    private DcMotor FrontLeft;
+    private DcMotor FrontRight;
+    private DcMotor BackLeft;
+    private DcMotor BackRight;
 
     @Override
     public void init() {
-        left = hardwareMap.get(DcMotor.class, "leftMotor");
-        right = hardwareMap.get(DcMotor.class, "rightMotor");
-        arm = hardwarMap.get(DcMotor.class, "armMotor")
-        front = hardwareMap.get(Servo.class, "frontServo");
-        back = hardwareMap.get(Servo.class, "backServo");
+        telemetry.addData("Status", "Initialized");
+        telemetry.update();
 
-        right.setDirection(DcMotorSimple.Direction.REVERSE);
+        control_Hub = hardwareMap.get(Blinker.class, "Control Hub");
+        FrontLeft = hardwareMap.get(DcMotor.class, "FrontLeft");
+        FrontRight = hardwareMap.get(DcMotor.class, "FrontRight");
+        BackLeft = hardwareMap.get(DcMotor.class, "BackLeft");
+        BackRight = hardwareMap.get(DcMotor.class, "BackRight");
 
-
-
-        servoPos = 0;
-        oldServoButton = false;
+        FrontLeft.setDirection(DcMotor.Direction.FORWARD);
+        BackLeft.setDirection(DcMotor.Direction.FORWARD);
+        FrontRight.setDirection(DcMotor.Direction.REVERSE);
+        BackRight.setDirection(DcMotor.Direction.REVERSE);
     }
 
     @Override
     public void loop() {
-        double speed = gamepad1.right_trigger - gamepad1.left_trigger;
-        double turn = gamepad1.left_stick_x;
-        double armSpeed = gamepad1.right_stick_y;
-        boolean servoButton = gamepad1.x;
+        // Setup a variable for each drive wheel to save power level for telemetry
+        double max;
+        double twist = -gamepad1.right_stick_y;
+        double strafe = gamepad1.left_stick_x * 1.5;
+        double drive = gamepad1.right_stick_x;
 
-        left.setPower(speed + turn);
-        right.setPower(speed - turn);
+        // Check if any joystick input is non-zero before moving
+        if (twist != 0.0 || strafe != 0.0 || drive != 0.0) {
+            double[] speeds = {
+                    (twist + strafe + drive),
+                    (twist - strafe - drive),
+                    (twist - strafe + drive),
+                    (twist + strafe - drive)
+            };
 
-        arm.setPower(armSpeed);
+            max = Math.max(Math.abs(speeds[0]), Math.abs(speeds[1]));
+            max = Math.max(max, Math.abs(speeds[2]));
+            max = Math.max(max, Math.abs(speeds[3]));
 
-        if (servoButton && !oldServoButton) {
-             if (servoPos == 0) {
-                front.setPosition(0);
-                back.setPosition(1);
-                servoPos = 1;
-             } else {
-                front.setPosition(0.5);
-                back.setPosition(0.5);
-                servoPos = 0;
-             }
+            if (max > 1.0) {
+                speeds[0] /= max;
+                speeds[1] /= max;
+                speeds[2] /= max;
+                speeds[3] /= max;
+            }
+
+            FrontLeft.setPower(speeds[0]);
+            FrontRight.setPower(speeds[1]);
+            BackLeft.setPower(speeds[2]);
+            BackRight.setPower(speeds[3]);
+        } else {
+            // If no joystick input, stop the robot
+            FrontLeft.setPower(0.0);
+            FrontRight.setPower(0.0);
+            BackLeft.setPower(0.0);
+            BackRight.setPower(0.0);
         }
 
-        oldServoButton = servoButton;
+        telemetry.update();
     }
-
 }
